@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from pyzotero import zotero
-from recommender import rerank_paper
+from recommender import rerank_paper_v3, rerank_paper_st
 from construct_email import render_email, send_email
 from tqdm import trange,tqdm
 from loguru import logger
@@ -169,7 +169,10 @@ if __name__ == '__main__':
           exit(0)
     else:
         logger.info("Reranking papers...")
-        papers = rerank_paper(papers, corpus)
+        if args.use_llm_api:
+            papers = rerank_paper_v3(papers, corpus, api_key=args.openai_api_key, base_url=args.openai_api_base)
+        else:
+            papers = rerank_paper_st(papers, corpus)
         if args.max_paper_num != -1:
             papers = papers[:args.max_paper_num]
         if args.use_llm_api:

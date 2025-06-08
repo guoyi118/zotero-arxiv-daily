@@ -226,3 +226,13 @@ class ArxivPaper:
                 logger.debug(f"Failed to extract affiliations of {self.arxiv_id}: {e}")
                 return None
             return affiliations
+
+    @property
+    def category(self) -> str:
+        # arxiv.Result.categories 是一个list，通常第一个为主分类
+        cats = getattr(self._paper, 'categories', None)
+        if cats is None:
+            return 'Unknown'
+        if isinstance(cats, list):
+            return ', '.join(cats)
+        return str(cats)

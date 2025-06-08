@@ -40,7 +40,7 @@ environment:
       - SMTP_PORT=465
       - SENDER=your_email@example.com
       - SENDER_PASSWORD=your_email_password
-      - RECEIVER=receiver_email@example.com
+      - RECEIVER=receiver_email@example.com,receiver_email1@example.com
 
       # 可选参数（带默认值）
       - ZOTERO_IGNORE=already_read_papers
