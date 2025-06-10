@@ -62,7 +62,7 @@ def get_empty_html():
 def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, pdf_url:str, code_url:str=None, affiliations:str=None, category:str=None, matched_keywords=None):
     code = f'<a href="{code_url}" style="display: inline-block; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; background-color: #5bc0de; padding: 8px 16px; border-radius: 4px; margin-left: 8px;">Code</a>' if code_url else ''
     if matched_keywords:
-        kw_html = f'<div style="color:#888;font-size:13px;padding:4px 0 4px 0"><strong>关键词命中：</strong>{', '.join(matched_keywords)}</div>'
+        kw_html = f'<div style="color:#888;font-size:13px;padding:4px 0 4px 0"><strong>Keyword：</strong>{', '.join(matched_keywords)}</div>'
     else:
         kw_html = ''
     block_template = f"""
