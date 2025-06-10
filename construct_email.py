@@ -7,6 +7,7 @@ from email.utils import parseaddr, formataddr
 import smtplib
 import datetime
 from loguru import logger
+from collections import defaultdict
 
 framework = """
 <!DOCTYPE HTML>
@@ -58,9 +59,13 @@ def get_empty_html():
   """
   return block_template
 
-def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, pdf_url:str, code_url:str=None, affiliations:str=None, category:str=None):
+def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, pdf_url:str, code_url:str=None, affiliations:str=None, category:str=None, matched_keywords=None):
     code = f'<a href="{code_url}" style="display: inline-block; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; background-color: #5bc0de; padding: 8px 16px; border-radius: 4px; margin-left: 8px;">Code</a>' if code_url else ''
-    block_template = """
+    if matched_keywords:
+        kw_html = f'<div style="color:#888;font-size:13px;padding:4px 0 4px 0"><strong>关键词命中：</strong>{', '.join(matched_keywords)}</div>'
+    else:
+        kw_html = ''
+    block_template = f"""
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background-color: #f9f9f9;">
     <tr>
         <td style="font-size: 20px; font-weight: bold; color: #333;">
@@ -94,7 +99,9 @@ def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, 
             <strong>TLDR:</strong> {abstract}
         </td>
     </tr>
-
+    <tr>
+        <td>{kw_html}</td>
+    </tr>
     <tr>
         <td style="padding: 8px 0;">
             <a href="{pdf_url}" style="display: inline-block; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; background-color: #d9534f; padding: 8px 16px; border-radius: 4px;">PDF</a>
@@ -103,7 +110,7 @@ def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, 
     </tr>
 </table>
 """
-    return block_template.format(title=title, authors=authors,rate=rate,arxiv_id=arxiv_id, abstract=abstract, pdf_url=pdf_url, code=code, affiliations=affiliations, category=category)
+    return block_template
 
 def get_stars(score:float):
     full_star = '<span class="full-star">⭐</span>'
@@ -123,26 +130,37 @@ def get_stars(score:float):
 
 
 def render_email(papers:list[ArxivPaper]):
-    parts = []
     if len(papers) == 0 :
         return framework.replace('__CONTENT__', get_empty_html())
-    
-    for p in tqdm(papers,desc='Rendering Email'):
-        rate = get_stars(p.score)
-        authors = [a.name for a in p.authors[:5]]
-        authors = ', '.join(authors)
-        if len(p.authors) > 5:
-            authors += ', ...'
-        if p.affiliations is not None:
-            affiliations = p.affiliations[:5]
-            affiliations = ', '.join(affiliations)
-            if len(p.affiliations) > 5:
-                affiliations += ', ...'
-        else:
-            affiliations = 'Unknown Affiliation'
-        parts.append(get_block_html(p.title, authors,rate,p.arxiv_id ,p.tldr, p.pdf_url, p.code_url, affiliations, p.category))
-
-    content = '<br>' + '</br><br>'.join(parts) + '</br>'
+    # 统计所有关键词
+    keyword2papers = defaultdict(list)
+    for p in papers:
+        for kw in p.matched_keywords:
+            keyword2papers[kw].append(p)
+    # 按关键词分组，每组内按score降序
+    group_htmls = []
+    for kw, group in sorted(keyword2papers.items(), key=lambda x: x[0].lower()):
+        group = sorted(group, key=lambda p: p.score if p.score is not None else 0, reverse=True)
+        group_parts = []
+        for p in group:
+            rate = get_stars(p.score)
+            authors = [a.name for a in p.authors[:5]]
+            authors = ', '.join(authors)
+            if len(p.authors) > 5:
+                authors += ', ...'
+            if p.affiliations is not None:
+                affiliations = p.affiliations[:5]
+                affiliations = ', '.join(affiliations)
+                if len(p.affiliations) > 5:
+                    affiliations += ', ...'
+            else:
+                affiliations = 'Unknown Affiliation'
+            group_parts.append(get_block_html(
+                p.title, authors, rate, p.arxiv_id, p.tldr, p.pdf_url, p.code_url, affiliations, p.category, matched_keywords=p.matched_keywords
+            ))
+        group_html = f'<h2 style="color:#2a7ae2">关键词：{kw}</h2>' + '<br>'.join(group_parts)
+        group_htmls.append(group_html)
+    content = '<br>'.join(group_htmls)
     return framework.replace('__CONTENT__', content)
 
 def send_email(sender:str, receiver:str, password:str,smtp_server:str,smtp_port:int, html:str,):

@@ -46,7 +46,7 @@ def filter_corpus(corpus:list[dict], pattern:str) -> list[dict]:
     return new_corpus
 
 
-def get_arxiv_paper(query:str, debug:bool=False) -> list[ArxivPaper]:
+def get_arxiv_paper(query:str, debug:bool=False, keywords:list[str]=None) -> list[ArxivPaper]:
     client = arxiv.Client(num_retries=10,delay_seconds=10)
     feed = feedparser.parse(f"https://rss.arxiv.org/atom/{query}")
     if 'Feed error for query' in feed.feed.title:
@@ -61,7 +61,6 @@ def get_arxiv_paper(query:str, debug:bool=False) -> list[ArxivPaper]:
             bar.update(len(batch))
             papers.extend(batch)
         bar.close()
-
     else:
         logger.debug("Retrieve 5 arxiv papers regardless of the date.")
         search = arxiv.Search(query='cat:cs.AI', sort_by=arxiv.SortCriterion.SubmittedDate)
@@ -70,6 +69,20 @@ def get_arxiv_paper(query:str, debug:bool=False) -> list[ArxivPaper]:
             papers.append(ArxivPaper(i))
             if len(papers) == 5:
                 break
+
+
+    if keywords is not None and len(keywords) > 0:
+        def get_matched_keywords(summary:str, keywords:list[str]) -> list[str]:
+            return [kw for kw in keywords if kw.lower() in summary.lower()]
+        print(len(papers),'before filtering')
+        filtered_papers = []
+        for p in papers:
+            matched = get_matched_keywords(p.summary, keywords)
+            if matched:
+                p.matched_keywords = matched
+                filtered_papers.append(p)
+        papers = filtered_papers
+        print(len(papers),'after filtering')
 
     return papers
 
@@ -99,7 +112,6 @@ def add_argument(*args, **kwargs):
 
 
 if __name__ == '__main__':
-    
     add_argument('--zotero_id', type=str, help='Zotero user ID')
     add_argument('--zotero_key', type=str, help='Zotero API key')
     add_argument('--zotero_ignore',type=str,help='Zotero collection to ignore, using gitignore-style pattern.')
@@ -162,7 +174,32 @@ if __name__ == '__main__':
         corpus = filter_corpus(corpus, args.zotero_ignore)
         logger.info(f"Remaining {len(corpus)} papers after filtering.")
     logger.info("Retrieving Arxiv papers...")
-    papers = get_arxiv_paper(args.arxiv_query, args.debug)
+    keywords = ['LLM',
+            'Agent', 
+            'Agentic', 
+            'Visualization', 
+            'text2sql', 
+            'ChatBI', 
+            'text-to-sql', 
+            'human computer interaction',
+            'HCI',
+            'human-in-the-loop',
+            'data story',
+            'dashboard',
+            'data visualization',
+            'storytelling',
+            'reinforcement learning',
+            'RLHF',
+            'RLHF-based',
+            'SDLC',
+            'code review',
+            'prompt engineering',
+            'prompt',
+            'prompt tuning',
+            'prompt learning',
+            'prompt optimization',
+            'sql']
+    papers = get_arxiv_paper(args.arxiv_query, args.debug, keywords)
     if len(papers) == 0:
         logger.info("No new papers found. Yesterday maybe a holiday and no one submit their work :). If this is not the case, please check the ARXIV_QUERY.")
         if not args.send_empty:
