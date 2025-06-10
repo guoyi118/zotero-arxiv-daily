@@ -159,7 +159,7 @@ def render_email(papers:list[ArxivPaper]):
             group_parts.append(get_block_html(
                 p.title, authors, rate, p.arxiv_id, p.tldr, p.pdf_url, p.code_url, affiliations, p.category, matched_keywords=p.matched_keywords
             ))
-        group_html = f'<h2 style="color:#2a7ae2">关键词：{kw}</h2>' + '<br>'.join(group_parts)
+        group_html = f'<h2 style="color:#2a7ae2">Keyword:{kw}</h2>' + '<br>'.join(group_parts)
         group_htmls.append(group_html)
     content = '<br>'.join(group_htmls)
     return framework.replace('__CONTENT__', content)
